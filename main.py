@@ -108,7 +108,39 @@ def compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, k, num_threads = 64):
     return S, D, I, N
 
 
-def estimate_rates(L, L2, N, D, fA, fA_mut, k):
+def estimate_rates_polynomial(L, L2, S, D, I, k):
+    K1 = L - k + 1
+    K2 = L2 - k + 1
+    
+    S_norm = 1.0 * S / (K1 * k)
+    D_norm = 1.0 * D / (K1 * k)
+    I_norm = 1.0 * I / (K1 * k - K1)
+    
+    coeffs = [0 for i in range(k+1)]
+    coeffs[0] = (S_norm + D_norm + I_norm) * D_norm**k
+    coeffs[-1] = 1
+    coeffs[-2] = -D_norm
+    
+    roots = np.polynomial.polynomial.polyroots(coeffs)
+    
+    p_d_ests = (D_norm - roots)/(S_norm + D_norm + I_norm)
+    p_d_ests = [np.real(p_d_est) for p_d_est in p_d_ests if not np.iscomplex(p_d_est)]
+    p_d_ests.sort()
+    
+    # drop the negative roots
+    p_d_ests = [p_d_est for p_d_est in p_d_ests if p_d_est >= 0]
+    
+    if len(p_d_ests) == 0:
+        return 0, 0, 0
+    
+    p_d_est = p_d_ests[0]
+    d_est = (D_norm - (S_norm + D_norm) * p_d_est)/(D_norm - (S_norm + D_norm + I_norm) * p_d_est) - 1.0
+    p_s_est = (S_norm * p_d_est)/(D_norm)
+    
+    return p_s_est, p_d_est, d_est
+
+
+def estimate_rates_linear(L, L2, N, D, fA, fA_mut, k):
     # use the equations to estimate the rates
     a1 = 1.0 * (L - fA) / 3.0 - fA
     b1 = - fA
@@ -190,9 +222,10 @@ def compute_mutation_rates(genome_filename1, genome_filename2, k, num_threads = 
     S, D, I, N = compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, k, num_threads)
     
     # compute the rates
-    subst_rate, del_rate, ins_rate = estimate_rates(L, L2, N, D, fA, fA_mut, k)
+    subst_rate_lin, del_rate_lin, ins_rate_lin = estimate_rates_linear(L, L2, N, D, fA, fA_mut, k)
+    subst_rate_poly, del_rate_poly, ins_rate_poly = estimate_rates_polynomial(L, L2, S, D, I, k)
     
-    return subst_rate, del_rate, ins_rate
+    return subst_rate_lin, del_rate_lin, ins_rate_lin, subst_rate_poly, del_rate_poly, ins_rate_poly
 
 
 if __name__ == "__main__":
@@ -203,7 +236,6 @@ if __name__ == "__main__":
     parser.add_argument("--num_threads", type=int, default=255, help="Number of threads to use")
     args = parser.parse_args()
 
-    subst_rate, del_rate, ins_rate = compute_mutation_rates(args.genome_filename1, args.genome_filename2, args.k, args.num_threads)
-    print(f"Substitution rate: {subst_rate}")
-    print(f"Deletion rate: {del_rate}")
-    print(f"Insertion rate: {ins_rate}")
+    subst_rate_lin, del_rate_lin, ins_rate_lin, subst_rate_poly, del_rate_poly, ins_rate_poly = compute_mutation_rates(args.genome_filename1, args.genome_filename2, args.k, args.num_threads)
+    print(f"Linear solution: Substitution rate: {subst_rate_lin}, Deletion rate: {del_rate_lin}, Insertion rate: {ins_rate_lin}")
+    print(f"Polynomial solution: Substitution rate: {subst_rate_poly}, Deletion rate: {del_rate_poly}, Insertion rate: {ins_rate_poly}")
