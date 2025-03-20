@@ -18,7 +18,7 @@ The code in this repository does the following:
 
 ## Installation
 ```
-conda create -n <environment_name> --file requirements.txt -c conda-forge -c bioconda
+conda create -n <environment_name> --file requirements.txt -c conda-forge -c bioconda -y
 conda activate <environment_name>
 ```
 

@@ -1,5 +1,5 @@
 cuttlefish
-edlib
+python-edlib
 numpy
 pandas
 scikit-learn
