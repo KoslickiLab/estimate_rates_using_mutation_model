@@ -24,4 +24,8 @@ conda activate <environment_name>
 
 
 ## Usage
-To be added
+```
+python main.py <orig_genome_filename (str)> <mutated_genome_filename (str)> <ksize (int)> --num_threads <num_threads (int)>
+```
+
+The script should compute and print the estimates for mutation rates using two ways.
