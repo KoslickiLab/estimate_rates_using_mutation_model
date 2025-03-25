@@ -163,7 +163,7 @@ def estimate_rates_linear(L, L2, N, D, fA, fA_mut, k):
 
     subst_rate, del_rate, ins_rate = x
     
-    p_s = (3 * (k*N + D) * (4 * fA_mut - L2 + L) - 4 * fA * k * N ) / ( (k*N + D) * (7*L - 4*fA) - 12*fA*k*N )
+    p_s = ( N*k*(L2-4*fA_mut-L+4*fA) + D*(L2-4*fA_mut) ) / (D * (L - 4*fA))
     print(p_s, subst_rate)
 
     return subst_rate, del_rate, ins_rate
