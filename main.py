@@ -154,8 +154,6 @@ def estimate_rates_polynomial(L, L2, S, D, I, k, S_k_over_2):
         candidate_ratio = S_smaller_est / S_smaller_actual
         if candidate_ratio > 1:
             candidate_ratio = 1.0/candidate_ratio
-        if candidate_ratio < 0.7:
-            continue
         if candidate_ratio > solution_ratio:
             solution_ratio = candidate_ratio
             solution = (p_s_est, p_d_est, d_est)
