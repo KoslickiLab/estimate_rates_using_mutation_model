@@ -89,11 +89,10 @@ def compute_S_D_I_N(u1, unitig_set_mutd, k):
                     
     return num_kmers_single_subst, num_kmers_single_delt, num_kmers_single_insertion, num_kmers_no_mutation
 
+def wrapper(args):
+    return compute_S_D_I_N(*args)
 
 def compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, k, num_threads=64):
-    def wrapper(args):
-        return compute_S_D_I_N(*args)
-
     arg_list = [(u1, unitig_set_mutd, k) for u1 in unitig_set_orig]
     
     S, D, I, N = 0, 0, 0, 0
