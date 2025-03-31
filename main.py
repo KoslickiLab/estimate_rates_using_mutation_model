@@ -224,6 +224,9 @@ def compute_mutation_rates(genome_filename1, genome_filename2, k, num_threads = 
     # compute S, D, I, N
     S, D, I, N = compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, k, num_threads)
     
+    # DEBUG: print L, L2, S, D, I, N, fA, fA_mut, k
+    print(f"L: {L}, L2: {L2}, S: {S}, D: {D}, I: {I}, N: {N}, fA: {fA}, fA_mut: {fA_mut}, k: {k}")
+    
     # compute the rates
     subst_rate_lin, del_rate_lin, ins_rate_lin = estimate_rates_linear(L, L2, N, D, fA, fA_mut, k)
     subst_rate_poly, del_rate_poly, ins_rate_poly = estimate_rates_polynomial(L, L2, S, D, I, k)
