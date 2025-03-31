@@ -11,9 +11,12 @@ from numpy.linalg import solve
 import edlib
 from run_cuttlefish import run_cuttlefish
 
-def compute_S_D_I_N(u1, unitig_set_mutd, k):
+def compute_S_D_I_N_S_smaller(u1, unitig_set_mutd, k):
     num_kmers_single_subst, num_kmers_single_delt, num_kmers_no_mutation = 0, 0, 0
     num_kmers_single_insertion = 0
+    
+    num_k_over_2mers_single_subst = 0
+    k_over_2 = int(k/2)
 
     for u2 in unitig_set_mutd:
         alignment, distance, st1, st2 = None, 9999999999, None, None
@@ -61,6 +64,10 @@ def compute_S_D_I_N(u1, unitig_set_mutd, k):
         for i in range(num_chars-k+1):
             if sum(in_numbers[i:i+k]) == 1:
                 num_kmers_single_subst += 1
+                
+        for i in range(num_chars-k_over_2+1):
+            if sum(in_numbers[i:i+k_over_2]) == 1:
+                num_k_over_2mers_single_subst += 1
 
         in_numbers = [0 for i in range(num_chars)]
         for i in range(num_chars):
@@ -87,28 +94,29 @@ def compute_S_D_I_N(u1, unitig_set_mutd, k):
                 num_kmers_single_insertion += 1
                     
                     
-    return num_kmers_single_subst, num_kmers_single_delt, num_kmers_single_insertion, num_kmers_no_mutation
+    return num_kmers_single_subst, num_kmers_single_delt, num_kmers_single_insertion, num_kmers_no_mutation, num_k_over_2mers_single_subst
 
 def wrapper(args):
-    return compute_S_D_I_N(*args)
+    return compute_S_D_I_N_S_smaller(*args)
 
-def compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, k, num_threads=64):
+def compute_S_D_I_N_S_Smaller_all(unitig_set_orig, unitig_set_mutd, k, num_threads=64):
     arg_list = [(u1, unitig_set_mutd, k) for u1 in unitig_set_orig]
     
-    S, D, I, N = 0, 0, 0, 0
+    S, D, I, N, S_k_over_2 = 0, 0, 0, 0, 0
 
     with Pool(num_threads) as pool:
         for result in tqdm(pool.imap(wrapper, arg_list), total=len(arg_list), desc="Processing"):
-            S_, D_, I_, N_ = result
+            S_, D_, I_, N_, S_k_over_2_ = result
             S += S_
             D += D_
             I += I_
             N += N_
+            S_k_over_2 += S_k_over_2_
 
-    return S, D, I, N
+    return S, D, I, N, S_k_over_2
 
 
-def estimate_rates_polynomial(L, L2, S, D, I, k):
+def estimate_rates_polynomial(L, L2, S, D, I, k, S_k_over_2):
     K1 = L - k + 1
     K2 = L2 - k + 1
     
@@ -125,19 +133,34 @@ def estimate_rates_polynomial(L, L2, S, D, I, k):
     
     p_d_ests = (D_norm - roots)/(S_norm + D_norm + I_norm)
     p_d_ests = [np.real(p_d_est) for p_d_est in p_d_ests if not np.iscomplex(p_d_est)]
-    p_d_ests.sort()
-    
-    # drop the negative roots
-    p_d_ests = [p_d_est for p_d_est in p_d_ests if p_d_est >= 0]
     
     if len(p_d_ests) == 0:
         return 0, 0, 0
     
-    p_d_est = p_d_ests[0]
-    d_est = (D_norm - (S_norm + D_norm) * p_d_est)/(D_norm - (S_norm + D_norm + I_norm) * p_d_est) - 1.0
-    p_s_est = (S_norm * p_d_est)/(D_norm)
+    p_d_ests.sort()
+    d_ests = [ (D_norm - (S_norm + D_norm) * p_d_est)/(D_norm - (S_norm + D_norm + I_norm) * p_d_est) - 1.0 for p_d_est in p_d_ests ]
+    p_s_ests = [ (S_norm * p_d_est)/(D_norm) for p_d_est in p_d_ests ]
     
-    return p_s_est, p_d_est, d_est
+    all_solutions = list( zip(p_s_ests, p_d_ests, d_ests) )
+    solution_ratio = 0.0
+    solution = (None, None, None)
+    
+    for p_s_est, p_d_est, d_est in all_solutions:
+        if p_s_est < 0 or p_d_est < 0 or d_est < 0:
+            continue
+        k2 = int(k/2)
+        S_smaller_est = K1*(k2)*(1 - p_s_est - p_d_est) ** (k2-1) * p_s_est * (d_est + 1.0)**(-k2+1)
+        S_smaller_actual = S_k_over_2
+        candidate_ratio = S_smaller_est / S_smaller_actual
+        if candidate_ratio > 1:
+            candidate_ratio = 1.0/candidate_ratio
+        if candidate_ratio < 0.7:
+            continue
+        if candidate_ratio > solution_ratio:
+            solution_ratio = candidate_ratio
+            solution = (p_s_est, p_d_est, d_est)
+    
+    return solution
 
 
 def estimate_rates_linear(L, L2, N, D, fA, fA_mut, k):
@@ -228,28 +251,20 @@ def compute_mutation_rates(genome_filename1, genome_filename2, k, num_threads = 
     unitig_set_mutd = split_unitigs(unitig_set_mutd, k)
     
     # compute S, D, I, N
-    S, D, I, N = compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, k, num_threads)
+    S, D, I, N, S_k_over_2 = compute_S_D_I_N_S_Smaller_all(unitig_set_orig, unitig_set_mutd, k, num_threads)
     
     # DEBUG: print L, L2, S, D, I, N, fA, fA_mut, k
     print(f"DBG: L: {L}, L2: {L2}, S: {S}, D: {D}, I: {I}, N: {N}, fA: {fA}, fA_mut: {fA_mut}, k: {k}")
     # DEBUG: show fA, fC, fG, fT
     print(f"DBG: fA: {fA}, fC: {fC}, fG: {fG}, fT: {fT}")
-    
-    largest = max(fA, fC, fG, fT)
-    if largest==fA:
-        pass
-    elif largest==fC:
-        fA, fA_mut = fC, fC_mut
-    elif largest==fG:
-        fA, fA_mut = fG, fG_mut
-    elif largest==fT:
-        fA, fA_mut = fT, fT_mut
-    else:
-        raise ValueError("Invalid largest value")
+    # DEBUG: show fA_mut, fC_mut, fG_mut, fT_mut
+    print(f"DBG: fA_mut: {fA_mut}, fC_mut: {fC_mut}, fG_mut: {fG_mut}, fT_mut: {fT_mut}")
+    # DEBUG: show S_k_over_2
+    print(f"DBG: S_k_over_2: {S_k_over_2}")
     
     # compute the rates
     subst_rate_lin, del_rate_lin, ins_rate_lin = estimate_rates_linear(L, L2, N, D, fA, fA_mut, k)
-    subst_rate_poly, del_rate_poly, ins_rate_poly = estimate_rates_polynomial(L, L2, S, D, I, k)
+    subst_rate_poly, del_rate_poly, ins_rate_poly = estimate_rates_polynomial(L, L2, S, D, I, k, S_k_over_2)
     
     return subst_rate_lin, del_rate_lin, ins_rate_lin, subst_rate_poly, del_rate_poly, ins_rate_poly
 
