@@ -90,20 +90,21 @@ def compute_S_D_I_N(u1, unitig_set_mutd, k):
     return num_kmers_single_subst, num_kmers_single_delt, num_kmers_single_insertion, num_kmers_no_mutation
 
 
-def compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, k, num_threads = 64):
-    # call compute_S_D_I_N using a multiprocessing pool
-    # return the sum of all the values
-    pool = Pool(num_threads)
-    arg_list = [(u1, unitig_set_mutd, k) for u1 in unitig_set_orig]
-    results = pool.starmap(compute_S_D_I_N, arg_list)
-    pool.close()
+def compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, k, num_threads=64):
+    def wrapper(args):
+        return compute_S_D_I_N(*args)
 
+    arg_list = [(u1, unitig_set_mutd, k) for u1 in unitig_set_orig]
+    
     S, D, I, N = 0, 0, 0, 0
-    for S_, D_, I_, N_ in results:
-        S += S_
-        D += D_
-        I += I_
-        N += N_
+
+    with Pool(num_threads) as pool:
+        for result in tqdm(pool.imap(wrapper, arg_list), total=len(arg_list), desc="Processing"):
+            S_, D_, I_, N_ = result
+            S += S_
+            D += D_
+            I += I_
+            N += N_
 
     return S, D, I, N
 
