@@ -204,6 +204,9 @@ def compute_mutation_rates(genome_filename1, genome_filename2, k, num_threads = 
     fG = orig_string.count('G')
     fT = orig_string.count('T')
     fA_mut = mutated_string.count('A')
+    fC_mut = mutated_string.count('C')
+    fG_mut = mutated_string.count('G')
+    fT_mut = mutated_string.count('T')
     
     genome1_cuttlefish_prefix = genome_filename1+"_unitigs"
     genome1_unitigs_filename = genome1_cuttlefish_prefix + ".fa"
@@ -231,6 +234,18 @@ def compute_mutation_rates(genome_filename1, genome_filename2, k, num_threads = 
     print(f"DBG: L: {L}, L2: {L2}, S: {S}, D: {D}, I: {I}, N: {N}, fA: {fA}, fA_mut: {fA_mut}, k: {k}")
     # DEBUG: show fA, fC, fG, fT
     print(f"DBG: fA: {fA}, fC: {fC}, fG: {fG}, fT: {fT}")
+    
+    largest = max(fA, fC, fG, fT)
+    if largest==fA:
+        pass
+    elif largest==fC:
+        fA, fA_mut = fC, fC_mut
+    elif largest==fG:
+        fA, fA_mut = fG, fG_mut
+    elif largest==fT:
+        fA, fA_mut = fT, fT_mut
+    else:
+        raise ValueError("Invalid largest value")
     
     # compute the rates
     subst_rate_lin, del_rate_lin, ins_rate_lin = estimate_rates_linear(L, L2, N, D, fA, fA_mut, k)
