@@ -200,6 +200,9 @@ def compute_mutation_rates(genome_filename1, genome_filename2, k, num_threads = 
     L2 = len(mutated_string)
     
     fA = orig_string.count('A')
+    fC = orig_string.count('C')
+    fG = orig_string.count('G')
+    fT = orig_string.count('T')
     fA_mut = mutated_string.count('A')
     
     genome1_cuttlefish_prefix = genome_filename1+"_unitigs"
@@ -225,7 +228,9 @@ def compute_mutation_rates(genome_filename1, genome_filename2, k, num_threads = 
     S, D, I, N = compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, k, num_threads)
     
     # DEBUG: print L, L2, S, D, I, N, fA, fA_mut, k
-    print(f"L: {L}, L2: {L2}, S: {S}, D: {D}, I: {I}, N: {N}, fA: {fA}, fA_mut: {fA_mut}, k: {k}")
+    print(f"DBG: L: {L}, L2: {L2}, S: {S}, D: {D}, I: {I}, N: {N}, fA: {fA}, fA_mut: {fA_mut}, k: {k}")
+    # DEBUG: show fA, fC, fG, fT
+    print(f"DBG: fA: {fA}, fC: {fC}, fG: {fG}, fT: {fT}")
     
     # compute the rates
     subst_rate_lin, del_rate_lin, ins_rate_lin = estimate_rates_linear(L, L2, N, D, fA, fA_mut, k)
