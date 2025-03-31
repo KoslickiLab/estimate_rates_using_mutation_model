@@ -242,6 +242,22 @@ def compute_mutation_rates(genome_filename1, genome_filename2, k, num_threads = 
     
     # compute S, D, I, N
     S, D, I, N = compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, k, num_threads)
+    
+    # run cf again
+    run_cuttlefish(genome_filename1, int(k/2), 64, genome1_cuttlefish_prefix)
+    run_cuttlefish(genome_filename2, int(k/2), 64, genome2_cuttlefish_prefix)
+    
+    assert os.path.exists(genome1_unitigs_filename), f"Mutated unitigs file {genome1_unitigs_filename} not found"
+    assert os.path.exists(genome2_unitigs_filename), f"Original unitigs file {genome2_unitigs_filename} not found"
+    
+    # read two sets of unitigs
+    unitig_set_orig = read_unitigs(genome1_unitigs_filename)
+    unitig_set_mutd = read_unitigs(genome2_unitigs_filename)
+    
+    # split unitigs into smaller unitigs
+    unitig_set_orig = split_unitigs(unitig_set_orig, int(k/2))
+    unitig_set_mutd = split_unitigs(unitig_set_mutd, int(k/2))
+    
     S_small, D_small, I_small, N_small = compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, int(k/2), num_threads)
     
     # DEBUG: print L, L2, S, D, I, N, fA, fA_mut, k
