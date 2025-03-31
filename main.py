@@ -11,12 +11,9 @@ from numpy.linalg import solve
 import edlib
 from run_cuttlefish import run_cuttlefish
 
-def compute_S_D_I_N_S_smaller(u1, unitig_set_mutd, k):
+def compute_S_D_I_N(u1, unitig_set_mutd, k):
     num_kmers_single_subst, num_kmers_single_delt, num_kmers_no_mutation = 0, 0, 0
     num_kmers_single_insertion = 0
-    
-    num_k_over_2mers_single_subst = 0
-    k_over_2 = int(k/2)
 
     for u2 in unitig_set_mutd:
         alignment, distance, st1, st2 = None, 9999999999, None, None
@@ -64,10 +61,6 @@ def compute_S_D_I_N_S_smaller(u1, unitig_set_mutd, k):
         for i in range(num_chars-k+1):
             if sum(in_numbers[i:i+k]) == 1:
                 num_kmers_single_subst += 1
-                
-        for i in range(num_chars-k_over_2+1):
-            if sum(in_numbers[i:i+k_over_2]) == 1:
-                num_k_over_2mers_single_subst += 1
 
         in_numbers = [0 for i in range(num_chars)]
         for i in range(num_chars):
@@ -94,26 +87,25 @@ def compute_S_D_I_N_S_smaller(u1, unitig_set_mutd, k):
                 num_kmers_single_insertion += 1
                     
                     
-    return num_kmers_single_subst, num_kmers_single_delt, num_kmers_single_insertion, num_kmers_no_mutation, num_k_over_2mers_single_subst
+    return num_kmers_single_subst, num_kmers_single_delt, num_kmers_single_insertion, num_kmers_no_mutation
 
 def wrapper(args):
-    return compute_S_D_I_N_S_smaller(*args)
+    return compute_S_D_I_N(*args)
 
-def compute_S_D_I_N_S_Smaller_all(unitig_set_orig, unitig_set_mutd, k, num_threads=64):
+def compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, k, num_threads=64):
     arg_list = [(u1, unitig_set_mutd, k) for u1 in unitig_set_orig]
     
-    S, D, I, N, S_k_over_2 = 0, 0, 0, 0, 0
+    S, D, I, N = 0, 0, 0, 0
 
     with Pool(num_threads) as pool:
         for result in tqdm(pool.imap(wrapper, arg_list), total=len(arg_list), desc="Processing"):
-            S_, D_, I_, N_, S_k_over_2_ = result
+            S_, D_, I_, N_ = result
             S += S_
             D += D_
             I += I_
             N += N_
-            S_k_over_2 += S_k_over_2_
 
-    return S, D, I, N, S_k_over_2
+    return S, D, I, N
 
 
 def estimate_rates_polynomial(L, L2, S, D, I, k, S_k_over_2):
@@ -249,7 +241,8 @@ def compute_mutation_rates(genome_filename1, genome_filename2, k, num_threads = 
     unitig_set_mutd = split_unitigs(unitig_set_mutd, k)
     
     # compute S, D, I, N
-    S, D, I, N, S_k_over_2 = compute_S_D_I_N_S_Smaller_all(unitig_set_orig, unitig_set_mutd, k, num_threads)
+    S, D, I, N = compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, k, num_threads)
+    S_small, D_small, I_small, N_small = compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, int(k/2), num_threads)
     
     # DEBUG: print L, L2, S, D, I, N, fA, fA_mut, k
     print(f"DBG: L: {L}, L2: {L2}, S: {S}, D: {D}, I: {I}, N: {N}, fA: {fA}, fA_mut: {fA_mut}, k: {k}")
@@ -257,12 +250,12 @@ def compute_mutation_rates(genome_filename1, genome_filename2, k, num_threads = 
     print(f"DBG: fA: {fA}, fC: {fC}, fG: {fG}, fT: {fT}")
     # DEBUG: show fA_mut, fC_mut, fG_mut, fT_mut
     print(f"DBG: fA_mut: {fA_mut}, fC_mut: {fC_mut}, fG_mut: {fG_mut}, fT_mut: {fT_mut}")
-    # DEBUG: show S_k_over_2
-    print(f"DBG: S_k_over_2: {S_k_over_2}")
+    # DEBUG: show smallers
+    print(f"DBG: S_small: {S_small}, D_small: {D_small}, I_small: {I_small}, N_small: {N_small}")
     
     # compute the rates
     subst_rate_lin, del_rate_lin, ins_rate_lin = estimate_rates_linear(L, L2, N, D, fA, fA_mut, k)
-    subst_rate_poly, del_rate_poly, ins_rate_poly = estimate_rates_polynomial(L, L2, S, D, I, k, S_k_over_2)
+    subst_rate_poly, del_rate_poly, ins_rate_poly = estimate_rates_polynomial(L, L2, S, D, I, k, S_small)
     
     return subst_rate_lin, del_rate_lin, ins_rate_lin, subst_rate_poly, del_rate_poly, ins_rate_poly
 
