@@ -53,6 +53,17 @@ def compute_S_D_I_N(u1, unitig_set_mutd, k):
             
         alphabet = set('ACGT')
         num_chars = len(seqA)
+        in_numbers = [0 for i in range(num_chars)]
+        for i in range(num_chars):
+            if seqA[i] != seqB[i]:
+                if seqA[i] in alphabet and seqB[i] in alphabet:
+                    in_numbers[i] = 1
+                else:
+                    in_numbers[i] = 2
+
+        for i in range(num_chars-k+1):
+            if sum(in_numbers[i:i+k]) == 1:
+                num_kmers_single_subst += 1
 
         in_numbers = [0 for i in range(num_chars)]
         for i in range(num_chars):
@@ -77,24 +88,6 @@ def compute_S_D_I_N(u1, unitig_set_mutd, k):
         for i in range(num_chars-k+1):
             if sum(in_numbers[i:i+k]) == 1:
                 num_kmers_single_insertion += 1
-                
-        if distance < smallest_distance:
-            smallest_distance = distance
-            best_seqA, best_seqB = seqA, seqB
-            
-    seqA, seqB = best_seqA, best_seqB
-    num_chars = len(seqA)
-    in_numbers = [0 for i in range(num_chars)]
-    for i in range(num_chars):
-        if seqA[i] != seqB[i]:
-            if seqA[i] in alphabet and seqB[i] in alphabet:
-                in_numbers[i] = 1
-            else:
-                in_numbers[i] = 2
-
-    for i in range(num_chars-k+1):
-        if sum(in_numbers[i:i+k]) == 1:
-            num_kmers_single_subst += 1
                     
                     
     return num_kmers_single_subst, num_kmers_single_delt, num_kmers_single_insertion, num_kmers_no_mutation
@@ -118,7 +111,7 @@ def compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, k, num_threads=64):
     return S, D, I, N
 
 
-def estimate_rates_polynomial(L, L2, S, D, I, k):
+def estimate_rates_polynomial(L, L2, S, D, I, N, k):
     K1 = L - k + 1
     K2 = L2 - k + 1
     
@@ -144,14 +137,19 @@ def estimate_rates_polynomial(L, L2, S, D, I, k):
     p_s_ests = [ (S_norm * p_d_est)/(D_norm) for p_d_est in p_d_ests ]
     
     all_solutions = list( zip(p_s_ests, p_d_ests, d_ests) )
-    solution_sum_of_rates = 100
+    solution_N_ratio = 0.0
     solution = (None, None, None)
     
     for p_s_est, p_d_est, d_est in all_solutions:
         if p_s_est < 0 or p_d_est < 0 or d_est < 0:
             continue
-        if p_s_est + p_d_est + d_est < solution_sum_of_rates:
-            solution_sum_of_rates = p_s_est + p_d_est + d_est
+        
+        N_using_these = (L - k + 1) * (1 - p_s_est - p_d_est)**k / ( (d_est+1)**(k-1) )
+        ratio_this = N_using_these / N
+        if ratio_this > 1.0:
+            ratio_this = 1.0 / ratio_this
+        if ratio_this > solution_N_ratio:
+            solution_N_ratio = ratio_this
             solution = (p_s_est, p_d_est, d_est)    
     
     return solution
@@ -262,7 +260,7 @@ def compute_mutation_rates(genome_filename1, genome_filename2, k, num_threads = 
     
     # compute the rates
     subst_rate_lin, del_rate_lin, ins_rate_lin = estimate_rates_linear(L, L2, N, D, S, fA, fA_mut, k)
-    subst_rate_poly, del_rate_poly, ins_rate_poly = estimate_rates_polynomial(L, L2, S, D, I, k)
+    subst_rate_poly, del_rate_poly, ins_rate_poly = estimate_rates_polynomial(L, L2, S, D, I, N, k)
     
     return subst_rate_lin, del_rate_lin, ins_rate_lin, subst_rate_poly, del_rate_poly, ins_rate_poly
 
