@@ -147,12 +147,18 @@ def estimate_rates_polynomial(L, L2, S, D, I, k):
     return solution
 
 
-def estimate_rates_linear(L, L2, N, D, fA, fA_mut, k):
+def estimate_rates_linear(L, L2, N, D, S, fA, fA_mut, k):
     # use the equations to estimate the rates
-    a1 = 1.0 * (L - fA) / 3.0 - fA
-    b1 = - fA
-    c1 = L/4.0
-    d1 = fA_mut - fA
+    #a1 = 1.0 * (L - fA) / 3.0 - fA
+    #b1 = - fA
+    #c1 = L/4.0
+    #d1 = fA_mut - fA
+    
+    a1 = 1
+    b1 = -1.0*S/D
+    c1 = 0
+    d1 = 0
+    
 
     a2 = 0
     b2 = -1
@@ -245,7 +251,7 @@ def compute_mutation_rates(genome_filename1, genome_filename2, k, num_threads = 
     print(f"DBG: fA_mut: {fA_mut}, fC_mut: {fC_mut}, fG_mut: {fG_mut}, fT_mut: {fT_mut}")
     
     # compute the rates
-    subst_rate_lin, del_rate_lin, ins_rate_lin = estimate_rates_linear(L, L2, N, D, fA, fA_mut, k)
+    subst_rate_lin, del_rate_lin, ins_rate_lin = estimate_rates_linear(L, L2, N, D, S, fA, fA_mut, k)
     subst_rate_poly, del_rate_poly, ins_rate_poly = estimate_rates_polynomial(L, L2, S, D, I, k)
     
     return subst_rate_lin, del_rate_lin, ins_rate_lin, subst_rate_poly, del_rate_poly, ins_rate_poly
