@@ -108,7 +108,7 @@ def compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, k, num_threads=64):
     return S, D, I, N
 
 
-def estimate_rates_polynomial(L, L2, S, D, I, k, S_k_over_2):
+def estimate_rates_polynomial(L, L2, S, D, I, k):
     K1 = L - k + 1
     K2 = L2 - k + 1
     
@@ -134,21 +134,15 @@ def estimate_rates_polynomial(L, L2, S, D, I, k, S_k_over_2):
     p_s_ests = [ (S_norm * p_d_est)/(D_norm) for p_d_est in p_d_ests ]
     
     all_solutions = list( zip(p_s_ests, p_d_ests, d_ests) )
-    solution_ratio = 0.0
+    solution_sum_of_rates = 100
     solution = (None, None, None)
     
     for p_s_est, p_d_est, d_est in all_solutions:
         if p_s_est < 0 or p_d_est < 0 or d_est < 0:
             continue
-        k2 = int(k/2)
-        S_smaller_est = K1*(k2)*(1 - p_s_est - p_d_est) ** (k2-1) * p_s_est * (d_est + 1.0)**(-k2+1)
-        S_smaller_actual = S_k_over_2
-        candidate_ratio = S_smaller_est / S_smaller_actual
-        if candidate_ratio > 1:
-            candidate_ratio = 1.0/candidate_ratio
-        if candidate_ratio > solution_ratio:
-            solution_ratio = candidate_ratio
-            solution = (p_s_est, p_d_est, d_est)
+        if p_s_est + p_d_est + d_est < solution_sum_of_rates:
+            solution_sum_of_rates = p_s_est + p_d_est + d_est
+            solution = (p_s_est, p_d_est, d_est)    
     
     return solution
 
@@ -176,8 +170,8 @@ def estimate_rates_linear(L, L2, N, D, fA, fA_mut, k):
 
     subst_rate, del_rate, ins_rate = x
     
-    p_s = 3 * ( N*k*(L2-4*fA_mut-L+4*fA) + D*(L2-4*fA_mut) ) / ( (L - 4*fA) * (3 - 4*N*k - 4*D))
-    print(p_s, subst_rate)
+    #p_s = 3 * ( N*k*(L2-4*fA_mut-L+4*fA) + D*(L2-4*fA_mut) ) / ( (L - 4*fA) * (3 - 4*N*k - 4*D))
+    #print(p_s, subst_rate)
 
     return subst_rate, del_rate, ins_rate
 
@@ -243,35 +237,16 @@ def compute_mutation_rates(genome_filename1, genome_filename2, k, num_threads = 
     # compute S, D, I, N
     S, D, I, N = compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, k, num_threads)
     
-    # run cf again
-    run_cuttlefish(genome_filename1, int(k/2), 64, genome1_cuttlefish_prefix)
-    run_cuttlefish(genome_filename2, int(k/2), 64, genome2_cuttlefish_prefix)
-    
-    assert os.path.exists(genome1_unitigs_filename), f"Mutated unitigs file {genome1_unitigs_filename} not found"
-    assert os.path.exists(genome2_unitigs_filename), f"Original unitigs file {genome2_unitigs_filename} not found"
-    
-    # read two sets of unitigs
-    unitig_set_orig = read_unitigs(genome1_unitigs_filename)
-    unitig_set_mutd = read_unitigs(genome2_unitigs_filename)
-    
-    # split unitigs into smaller unitigs
-    unitig_set_orig = split_unitigs(unitig_set_orig, int(k/2))
-    unitig_set_mutd = split_unitigs(unitig_set_mutd, int(k/2))
-    
-    S_small, D_small, I_small, N_small = compute_S_D_I_N_all(unitig_set_orig, unitig_set_mutd, int(k/2), num_threads)
-    
     # DEBUG: print L, L2, S, D, I, N, fA, fA_mut, k
     print(f"DBG: L: {L}, L2: {L2}, S: {S}, D: {D}, I: {I}, N: {N}, fA: {fA}, fA_mut: {fA_mut}, k: {k}")
     # DEBUG: show fA, fC, fG, fT
     print(f"DBG: fA: {fA}, fC: {fC}, fG: {fG}, fT: {fT}")
     # DEBUG: show fA_mut, fC_mut, fG_mut, fT_mut
     print(f"DBG: fA_mut: {fA_mut}, fC_mut: {fC_mut}, fG_mut: {fG_mut}, fT_mut: {fT_mut}")
-    # DEBUG: show smallers
-    print(f"DBG: S_small: {S_small}, D_small: {D_small}, I_small: {I_small}, N_small: {N_small}")
     
     # compute the rates
     subst_rate_lin, del_rate_lin, ins_rate_lin = estimate_rates_linear(L, L2, N, D, fA, fA_mut, k)
-    subst_rate_poly, del_rate_poly, ins_rate_poly = estimate_rates_polynomial(L, L2, S, D, I, k, S_small)
+    subst_rate_poly, del_rate_poly, ins_rate_poly = estimate_rates_polynomial(L, L2, S, D, I, k)
     
     return subst_rate_lin, del_rate_lin, ins_rate_lin, subst_rate_poly, del_rate_poly, ins_rate_poly
 
