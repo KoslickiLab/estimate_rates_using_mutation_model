@@ -15,9 +15,6 @@ def compute_S_D_I_N(u1, unitig_set_mutd, k):
     num_kmers_single_subst, num_kmers_single_delt, num_kmers_no_mutation = 0, 0, 0
     num_kmers_single_insertion = 0
 
-    best_distance = 9999999999
-    best_seqA, best_seqB = None, None
-    flip = False
     for u2 in unitig_set_mutd:
         alignment, distance, st1, st2 = None, 9999999999, None, None
         
@@ -51,14 +48,6 @@ def compute_S_D_I_N(u1, unitig_set_mutd, k):
         if flip:
             seqB, seqA = seqA, seqB
             
-        if distance < best_distance:
-            best_distance = distance
-            best_seqA, best_seqB = seqA, seqB
-        
-    if best_seqA is not None and best_seqB is not None:
-        seqA = best_seqA
-        seqB = best_seqB
-        
         alphabet = set('ACGT')
         num_chars = len(seqA)
         in_numbers = [0 for i in range(num_chars)]
