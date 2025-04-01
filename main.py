@@ -83,6 +83,7 @@ def compute_S_D_I_N(u1, unitig_set_mutd, k):
             best_seqA, best_seqB = seqA, seqB
             
     seqA, seqB = best_seqA, best_seqB
+    num_chars = len(seqA)
     in_numbers = [0 for i in range(num_chars)]
     for i in range(num_chars):
         if seqA[i] != seqB[i]:
