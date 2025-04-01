@@ -15,6 +15,9 @@ def compute_S_D_I_N(u1, unitig_set_mutd, k):
     num_kmers_single_subst, num_kmers_single_delt, num_kmers_no_mutation = 0, 0, 0
     num_kmers_single_insertion = 0
 
+    best_seqA, best_seqB = None, None
+    smallest_distance = 9999999999
+
     for u2 in unitig_set_mutd:
         alignment, distance, st1, st2 = None, 9999999999, None, None
         
@@ -50,17 +53,6 @@ def compute_S_D_I_N(u1, unitig_set_mutd, k):
             
         alphabet = set('ACGT')
         num_chars = len(seqA)
-        in_numbers = [0 for i in range(num_chars)]
-        for i in range(num_chars):
-            if seqA[i] != seqB[i]:
-                if seqA[i] in alphabet and seqB[i] in alphabet:
-                    in_numbers[i] = 1
-                else:
-                    in_numbers[i] = 2
-
-        for i in range(num_chars-k+1):
-            if sum(in_numbers[i:i+k]) == 1:
-                num_kmers_single_subst += 1
 
         in_numbers = [0 for i in range(num_chars)]
         for i in range(num_chars):
@@ -85,6 +77,23 @@ def compute_S_D_I_N(u1, unitig_set_mutd, k):
         for i in range(num_chars-k+1):
             if sum(in_numbers[i:i+k]) == 1:
                 num_kmers_single_insertion += 1
+                
+        if distance < smallest_distance:
+            smallest_distance = distance
+            best_seqA, best_seqB = seqA, seqB
+            
+    seqA, seqB = best_seqA, best_seqB
+    in_numbers = [0 for i in range(num_chars)]
+    for i in range(num_chars):
+        if seqA[i] != seqB[i]:
+            if seqA[i] in alphabet and seqB[i] in alphabet:
+                in_numbers[i] = 1
+            else:
+                in_numbers[i] = 2
+
+    for i in range(num_chars-k+1):
+        if sum(in_numbers[i:i+k]) == 1:
+            num_kmers_single_subst += 1
                     
                     
     return num_kmers_single_subst, num_kmers_single_delt, num_kmers_single_insertion, num_kmers_no_mutation
@@ -127,7 +136,7 @@ def estimate_rates_polynomial(L, L2, S, D, I, k):
     p_d_ests = [np.real(p_d_est) for p_d_est in p_d_ests if not np.iscomplex(p_d_est)]
     
     if len(p_d_ests) == 0:
-        return 0, 0, 0
+        return None, None, None
     
     p_d_ests.sort()
     d_ests = [ (D_norm - (S_norm + D_norm) * p_d_est)/(D_norm - (S_norm + D_norm + I_norm) * p_d_est) - 1.0 for p_d_est in p_d_ests ]
