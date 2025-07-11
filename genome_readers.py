@@ -18,6 +18,7 @@ def clean_genome_string(genome_string):
     Removes all non-alphabet characters from a genome string
     """
     alphabet = set('ACGT')
+    genome_string = genome_string.upper() # in case there are lower cases in the given string.
     return ''.join(filter(alphabet.__contains__, genome_string))
 
 def get_genome_length(genome_filename):

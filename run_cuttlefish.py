@@ -4,7 +4,7 @@ import subprocess
 def run_cuttlefish(genome_filename, k, num_threads, outoput_prefix):
     #rm random_mutated.fasta_unitigs*
     #cuttlefish build -s random_mutated.fasta -k 21 -t 128 -o random_mutated.fasta_unitigs -w . --ref
-    
+    os.system("ulimit -n 2048") # ref https://github.com/COMBINE-lab/cuttlefish section "Note": ensure the capability of opening so many files
     cmd = f"rm {outoput_prefix}*"
     os.system(cmd)
 
